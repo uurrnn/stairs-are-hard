@@ -24,6 +24,9 @@ namespace WheelchairRacing.Player
         [SerializeField] private float airControlMultiplier = 0.3f;  // Reduced control when airborne
         [SerializeField] private Vector3 centerOfMassOffset = new Vector3(0f, -0.5f, 0f);
 
+        [Header("Collider Settings")]
+        [SerializeField] private ColliderType colliderType = ColliderType.Box;
+
         [Header("Ground Detection")]
         [SerializeField] private float groundCheckDistance = 1.0f;
         [SerializeField] private LayerMask groundLayer = ~0;
@@ -52,18 +55,47 @@ namespace WheelchairRacing.Player
         public float SlopeAngle => currentSlopeAngle;
         public Vector3 Velocity => rb.linearVelocity;
 
+        public enum ColliderType
+        {
+            Capsule,
+            Box
+        }
+
         private void Awake()
         {
             rb = GetComponent<Rigidbody>();
             inputHandler = GetComponent<WheelchairInput>();
 
+            Collider activeCollider = ConfigureCollider();
             ConfigureRigidbody();
-            ConfigureBounceMaterial();
+            ConfigureBounceMaterial(activeCollider);
         }
 
-        private void ConfigureBounceMaterial()
+        private Collider ConfigureCollider()
         {
-            var collider = GetComponent<Collider>();
+            if (colliderType == ColliderType.Box)
+            {
+                var capsule = GetComponent<CapsuleCollider>();
+                if (capsule != null)
+                {
+                    var box = gameObject.AddComponent<BoxCollider>();
+                    box.center = capsule.center;
+
+                    // Box width/depth = capsule diameter, height = capsule height
+                    float diameter = capsule.radius * 2f;
+                    box.size = new Vector3(diameter, capsule.height, diameter);
+
+                    Destroy(capsule);
+                    return box;
+                }
+            }
+
+            return GetComponent<Collider>();
+        }
+
+        private void ConfigureBounceMaterial(Collider specificCollider = null)
+        {
+            var collider = specificCollider != null ? specificCollider : GetComponent<Collider>();
             if (collider != null)
             {
                 var bounceMaterial = new PhysicsMaterial("WheelchairBounce")
