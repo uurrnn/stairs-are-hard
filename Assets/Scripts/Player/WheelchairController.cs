@@ -22,6 +22,7 @@ namespace WheelchairRacing.Player
         [SerializeField] private float maxSpeed = 20f;
         [SerializeField] private float slopeGravityMultiplier = 1.5f;
         [SerializeField] private float airControlMultiplier = 0.3f;  // Reduced control when airborne
+        [SerializeField] private Vector3 centerOfMassOffset = new Vector3(0f, -0.5f, 0f);
 
         [Header("Ground Detection")]
         [SerializeField] private float groundCheckDistance = 1.0f;
@@ -85,9 +86,10 @@ namespace WheelchairRacing.Player
             rb.angularDamping = 8f;
             rb.interpolation = RigidbodyInterpolation.Interpolate;
             rb.collisionDetectionMode = CollisionDetectionMode.Continuous;
+            rb.centerOfMass = centerOfMassOffset;
 
-            // Prevent flipping by constraining rotation on X and Z
-            rb.constraints = RigidbodyConstraints.FreezeRotationX | RigidbodyConstraints.FreezeRotationZ;
+            // Allow full rotation for tilting physics
+            rb.constraints = RigidbodyConstraints.None;
         }
 
         private void FixedUpdate()
@@ -217,15 +219,9 @@ namespace WheelchairRacing.Player
 
         private void MaintainUpright()
         {
-            // Get current tilt
-            float tiltAngle = Vector3.Angle(transform.up, Vector3.up);
-
-            if (tiltAngle > maxTiltAngle)
-            {
-                // Apply corrective torque to stay upright
-                Vector3 correctionAxis = Vector3.Cross(transform.up, Vector3.up);
-                rb.AddTorque(correctionAxis * uprightForce, ForceMode.Acceleration);
-            }
+            // Continuous stabilization to keep upright while allowing physics tilt
+            Vector3 correctionAxis = Vector3.Cross(transform.up, Vector3.up);
+            rb.AddTorque(correctionAxis * uprightForce, ForceMode.Acceleration);
         }
 
         /// <summary>
